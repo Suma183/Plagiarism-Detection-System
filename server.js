@@ -1,32 +1,30 @@
-// Import dependencies
+// ✅ Import required modules
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 
-// Initialize the Express app
+// ✅ Initialize Express app
 const app = express();
 
-// Middleware setup
-app.use(express.json());
+// ✅ Middleware setup
 app.use(cors());
+app.use(express.json());
 
-// ✅ Root route to confirm backend is live
+// ✅ Root route to check if backend is running
 app.get("/", (req, res) => {
-  res.status(200).send("✅ Backend is live and running successfully!");
+  res.send("✅ Backend is live and running successfully!");
 });
 
-// MongoDB Atlas connection string
-const uri = "mongodb+srv://priya22bce8666:Sumaammu189@cluster0.7lr0ybt.mongodb.net/?appName=Cluster0";
+// ✅ MongoDB connection URI
+const uri = "mongodb+srv://priya22bce8666:Sumaammu189@cluster0.7lr0ybt.mongodb.net/?retryWrites=true&w=majority";
 
-// Connect to MongoDB
-mongoose.connect(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+// ✅ Connect to MongoDB Atlas
+mongoose
+  .connect(uri)
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Define schema for report data
+// ✅ Define Schema
 const reportSchema = new mongoose.Schema({
   email: String,
   subject: String,
@@ -34,10 +32,10 @@ const reportSchema = new mongoose.Schema({
   similarity: Array,
 });
 
-// Create the Report model
+// ✅ Model
 const Report = mongoose.model("Report", reportSchema);
 
-// ✅ API route to save report data
+// ✅ POST route to save report
 app.post("/api/report", async (req, res) => {
   try {
     const { email, subject, filename, similarity } = req.body;
@@ -49,20 +47,20 @@ app.post("/api/report", async (req, res) => {
   }
 });
 
-// ✅ API route to get all reports
+// ✅ GET route to retrieve reports
 app.get("/api/reports", async (req, res) => {
   try {
     const reports = await Report.find();
-    res.status(200).json(reports);
+    res.json(reports);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Server port setup for Render
+// ✅ Use Render/Cloud Port
 const PORT = process.env.PORT || 5000;
 
-// Start the server
-app.listen(PORT, () => {
+// ✅ Start server
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
