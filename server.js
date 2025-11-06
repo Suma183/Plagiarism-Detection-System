@@ -2,6 +2,13 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// ✅ Get current directory info (important for Render debugging)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+console.log("🗂️ Server running from directory:", __dirname);
 
 // ✅ Initialize Express app
 const app = express();
@@ -10,9 +17,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Root route to check if backend is running
+// ✅ Root route (Render will hit this by default)
 app.get("/", (req, res) => {
   res.send("✅ Backend is live and running successfully!");
+});
+
+// ✅ Folder check route for Render debugging
+app.get("/check-folder", (req, res) => {
+  res.send(`🗂️ Server is running from folder: ${process.cwd()}`);
 });
 
 // ✅ MongoDB connection URI
@@ -20,7 +32,10 @@ const uri = "mongodb+srv://priya22bce8666:Sumaammu189@cluster0.7lr0ybt.mongodb.n
 
 // ✅ Connect to MongoDB Atlas
 mongoose
-  .connect(uri)
+  .connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
@@ -43,6 +58,7 @@ app.post("/api/report", async (req, res) => {
     await newReport.save();
     res.status(201).json({ message: "Report saved successfully!" });
   } catch (error) {
+    console.error("Error saving report:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -53,6 +69,7 @@ app.get("/api/reports", async (req, res) => {
     const reports = await Report.find();
     res.json(reports);
   } catch (error) {
+    console.error("Error retrieving reports:", error);
     res.status(500).json({ error: error.message });
   }
 });
