@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend server for my capstone project connected to MongoDB Atlas",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
