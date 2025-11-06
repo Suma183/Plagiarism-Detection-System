@@ -1,29 +1,32 @@
+// Import dependencies
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 
+// Initialize the Express app
 const app = express();
+
+// Middleware setup
 app.use(express.json());
 app.use(cors());
 
-// ✅ Root route — Render will check this to verify your backend is live
+// ✅ Root route to confirm backend is live
 app.get("/", (req, res) => {
-  res.send("✅ Backend is live and running successfully!");
+  res.status(200).send("✅ Backend is live and running successfully!");
 });
 
-// ✅ MongoDB Connection
-// (You can later replace this with: process.env.MONGO_URI for security)
+// MongoDB Atlas connection string
 const uri = "mongodb+srv://priya22bce8666:Sumaammu189@cluster0.7lr0ybt.mongodb.net/?appName=Cluster0";
 
-mongoose
-  .connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+// Connect to MongoDB
+mongoose.connect(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Schema and Model
+// Define schema for report data
 const reportSchema = new mongoose.Schema({
   email: String,
   subject: String,
@@ -31,6 +34,7 @@ const reportSchema = new mongoose.Schema({
   similarity: Array,
 });
 
+// Create the Report model
 const Report = mongoose.model("Report", reportSchema);
 
 // ✅ API route to save report data
@@ -39,10 +43,9 @@ app.post("/api/report", async (req, res) => {
     const { email, subject, filename, similarity } = req.body;
     const newReport = new Report({ email, subject, filename, similarity });
     await newReport.save();
-    res.status(201).json({ message: "✅ Report saved successfully!" });
+    res.status(201).json({ message: "Report saved successfully!" });
   } catch (error) {
-    console.error("❌ Error saving report:", error);
-    res.status(500).json({ error: "Failed to save report." });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -50,13 +53,16 @@ app.post("/api/report", async (req, res) => {
 app.get("/api/reports", async (req, res) => {
   try {
     const reports = await Report.find();
-    res.json(reports);
+    res.status(200).json(reports);
   } catch (error) {
-    console.error("❌ Error fetching reports:", error);
-    res.status(500).json({ error: "Failed to fetch reports." });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ Server setup
+// Server port setup for Render
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
