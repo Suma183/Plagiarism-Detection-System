@@ -8,8 +8,15 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 dotenv.config();
 const app = express();
+
 app.use(cors());
 app.use(express.json());
+
+// ✅ Force responses to always be JSON (fixes “Unexpected token <” issue)
+app.use("/api", (req, res, next) => {
+  res.setHeader("Content-Type", "application/json");
+  next();
+});
 
 // ✅ MongoDB Connection
 mongoose
@@ -18,7 +25,7 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ✅ Cloudinary Configuration
 cloudinary.config({
@@ -31,27 +38,27 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
-    folder: "plagiarism_uploads", // folder in your Cloudinary account
-    resource_type: "auto", // allows PDFs, images, etc.
+    folder: "plagiarism_uploads", // folder name in Cloudinary
+    resource_type: "auto", // allows PDF, DOCX, images, etc.
   },
 });
 
 const upload = multer({ storage });
 
-// ✅ Mongoose Schema
+// ✅ Mongoose Schema and Model
 const reportSchema = new mongoose.Schema({
   email: String,
   subject: String,
   filename: String,
   similarity: [String],
-  fileUrl: String, // stores uploaded Cloudinary file URL
+  fileUrl: String, // stores Cloudinary file URL
 });
 
 const Report = mongoose.model("Report", reportSchema);
 
-// ✅ Basic Test Route
+// ✅ Root Route (Basic Test)
 app.get("/", (req, res) => {
-  res.send("Backend is running for Plagiarism Detection System 🚀");
+  res.send("🚀 Backend is running for Plagiarism Detection System!");
 });
 
 // ✅ Fetch All Reports
@@ -60,11 +67,12 @@ app.get("/api/reports", async (req, res) => {
     const reports = await Report.find();
     res.json(reports);
   } catch (error) {
+    console.error("❌ Error fetching reports:", error);
     res.status(500).json({ message: "Error fetching reports", error });
   }
 });
 
-// ✅ Add Report (without file)
+// ✅ Add Report (without file upload)
 app.post("/api/report", async (req, res) => {
   try {
     const { email, subject, filename, similarity } = req.body;
@@ -75,8 +83,9 @@ app.post("/api/report", async (req, res) => {
       similarity: similarity ? similarity.split(",") : [],
     });
     await report.save();
-    res.json({ message: "Report added successfully", report });
+    res.json({ message: "✅ Report added successfully", report });
   } catch (error) {
+    console.error("❌ Error adding report:", error);
     res.status(500).json({ message: "Error adding report", error });
   }
 });
@@ -87,7 +96,7 @@ app.post("/api/report/upload", upload.single("file"), async (req, res) => {
     const { email, subject, filename, similarity } = req.body;
 
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
     const fileUrl = req.file.path; // Cloudinary file URL
@@ -101,15 +110,18 @@ app.post("/api/report/upload", upload.single("file"), async (req, res) => {
     });
 
     await newReport.save();
-    res.json({ message: "File uploaded successfully", report: newReport });
+
+    res.json({
+      success: true,
+      message: "✅ File uploaded and saved successfully",
+      report: newReport,
+    });
   } catch (err) {
     console.error("❌ Upload error:", err);
-    res.status(500).json({ message: "Upload failed", error: err.message });
+    res.status(500).json({ success: false, message: "Upload failed", error: err.message });
   }
 });
 
 // ✅ Start the Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
