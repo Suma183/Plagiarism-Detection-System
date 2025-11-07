@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Plagiarism Detection • Dashboard</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent: #7c3aed;
+      --muted: #94a3b8;
+    }
+
+    html, body {
+      height: 100%;
+      background: #0b1020;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(2, 6, 23, 0.5);
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 9999;
+      min-width: 220px;
+    }
+
+    .lds-dual-ring {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+    }
+
+    .lds-dual-ring:after {
+      content: " ";
+      display: block;
+      width: 12px;
+      height: 12px;
+      margin: 2px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      border-color: var(--accent) transparent var(--accent) transparent;
+      animation: lds-dual-ring 1.2s linear infinite;
+    }
+
+    @keyframes lds-dual-ring {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 🌙 Light Mode */
+    .light {
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .light .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      color: #111827;
+    }
+  </style>
+</head>
+
+<body class="text-slate-200">
+
+  <!-- Navbar -->
+  <nav class="px-6 py-4 flex items-center justify-between border-b border-white/10">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-violet-700 to-indigo-600 shadow-md">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-white">
+          <path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="text-lg font-semibold">Plagiarism Detection</div>
+        <div class="text-xs text-slate-400">Smart Report Dashboard</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="refreshBtn" class="px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-sm border border-white/10 transition">🔁 Refresh</button>
+      <button id="themeToggle" class="px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-sm border border-white/10 transition">🌙 Dark Mode</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+
+    <!-- Form Section -->
+    <section class="card">
+      <h2 class="text-2xl font-semibold mb-4">📁 Upload Report</h2>
+      <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input id="email" required type="email" placeholder="Email" class="p-3 rounded-md bg-slate-900 border border-white/10 outline-none focus:ring-2 focus:ring-violet-600" />
+        <input id="subject" required placeholder="Subject" class="p-3 rounded-md bg-slate-900 border border-white/10 outline-none focus:ring-2 focus:ring-violet-600" />
+        <input id="filename" required placeholder="Filename" class="p-3 rounded-md bg-slate-900 border border-white/10 outline-none focus:ring-2 focus:ring-violet-600" />
+        <textarea id="similarity" placeholder="Similarity (comma separated)" rows="2" class="p-3 rounded-md bg-slate-900 border border-white/10 outline-none focus:ring-2 focus:ring-violet-600"></textarea>
+        <input id="fileInput" type="file" name="file" accept="*" class="p-3 rounded-md bg-slate-900 border border-white/10" />
+
+        <div class="md:col-span-2 flex items-center gap-3">
+          <button id="submitReport" class="ml-auto px-5 py-3 bg-gradient-to-br from-violet-600 to-indigo-500 rounded-lg shadow-md hover:brightness-105 transition">Submit Report</button>
+          <button id="clearBtn" type="button" class="px-4 py-2 border border-white/10 rounded-md text-sm hover:bg-slate-800">Clear</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Reports Section -->
+    <section class="card">
+      <h2 class="text-xl font-semibold mb-3">📊 Reports</h2>
+      <div id="reportsContainer" class="space-y-3"></div>
+    </section>
+
+  </main>
+
+  <!-- Toasts -->
+  <div id="toastRoot" class="toast"></div>
+
+  <!-- JS -->
+  <script>
+    const API_BASE = "https://plagiarism-detection-system-r98p.onrender.com/api";
+    const reportForm = document.getElementById("reportForm");
+    const fileInput = document.getElementById("fileInput");
+    const reportsContainer = document.getElementById("reportsContainer");
+    const themeToggle = document.getElementById("themeToggle");
+    const toastRoot = document.getElementById("toastRoot");
+
+    // 🧠 Auto-fill filename when file chosen
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById("filename").value = file.name;
+      }
+    });
+
+    // 🌙 Dark/Light Mode Toggle
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("light");
+      themeToggle.textContent = document.body.classList.contains("light")
+        ? "☀️ Light Mode"
+        : "🌙 Dark Mode";
+    });
+
+    // 🧩 Toast Function
+    function showToast(msg, type = "info", time = 3000) {
+      const el = document.createElement("div");
+      el.className =
+        "p-3 rounded-md mb-2 text-sm " +
+        (type === "error"
+          ? "bg-rose-600 text-white"
+          : "bg-slate-800 text-slate-100");
+      el.textContent = msg;
+      toastRoot.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 300);
+      }, time);
+    }
+
+    // 🧾 Fetch Reports
+    async function loadReports() {
+      reportsContainer.innerHTML = "<p class='text-slate-400'>Loading...</p>";
+      try {
+        const res = await fetch(`${API_BASE}/reports`);
+        const data = await res.json();
+        if (!data.length) {
+          reportsContainer.innerHTML = "<p class='text-slate-500'>No reports found.</p>";
+          return;
+        }
+        reportsContainer.innerHTML = "";
+        data.forEach((r) => {
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <p><b>Email:</b> ${r.email}</p>
+            <p><b>Subject:</b> ${r.subject}</p>
+            <p><b>Filename:</b> ${r.filename}</p>
+            <p><b>Similarity:</b> ${r.similarity?.join(", ")}</p>
+            ${
+              r.fileUrl
+                ? `<a href="${r.fileUrl}" target="_blank" class="text-violet-400 underline">📂 View File</a>`
+                : ""
+            }
+          `;
+          reportsContainer.appendChild(div);
+        });
+      } catch (err) {
+        showToast("Error fetching reports: " + err.message, "error");
+      }
+    }
+
+    // 📤 Submit Report
+    reportForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      const subject = document.getElementById("subject").value.trim();
+      const filename = document.getElementById("filename").value.trim();
+      const similarity = document.getElementById("similarity").value.trim();
+      const file = fileInput.files[0];
+
+      if (!email || !subject || !filename) {
+        showToast("⚠️ Please fill all required fields", "error");
+        return;
+      }
+
+      try {
+        if (file) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("email", email);
+          formData.append("subject", subject);
+          formData.append("filename", filename);
+          formData.append("similarity", similarity);
+
+          const uploadRes = await fetch(`${API_BASE}/report/upload`, {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await uploadRes.json();
+          if (!uploadRes.ok) throw new Error(result.message || "Upload failed");
+          showToast("✅ File uploaded successfully!");
+        } else {
+          const res = await fetch(`${API_BASE}/report`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, subject, filename, similarity }),
+          });
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.message || "Save failed");
+          showToast("✅ Report saved successfully!");
+        }
+
+        reportForm.reset();
+        await loadReports();
+      } catch (err) {
+        showToast("❌ " + err.message, "error");
+      }
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", loadReports);
+    document.getElementById("clearBtn").addEventListener("click", () => reportForm.reset());
+
+    // Initial load
+    loadReports();
+  </script>
+
+</body>
+</html>

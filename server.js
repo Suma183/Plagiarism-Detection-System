@@ -5,17 +5,32 @@ import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 const app = express();
 
+// Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
 
-// ✅ Force responses to always be JSON (fixes “Unexpected token <” issue)
+// ✅ Ensure all /api responses are JSON
 app.use("/api", (req, res, next) => {
   res.setHeader("Content-Type", "application/json");
   next();
+});
+
+// 🧠 Setup __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Serve static frontend from /public folder
+app.use(express.static(path.join(__dirname, "public")));
+
+// Serve index.html for root requests
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ✅ MongoDB Connection
@@ -56,9 +71,9 @@ const reportSchema = new mongoose.Schema({
 
 const Report = mongoose.model("Report", reportSchema);
 
-// ✅ Root Route (Basic Test)
-app.get("/", (req, res) => {
-  res.send("🚀 Backend is running for Plagiarism Detection System!");
+// ✅ Health Check Route
+app.get("/check-folder", (req, res) => {
+  res.send(`📂 Server is running from folder: ${__dirname}`);
 });
 
 // ✅ Fetch All Reports
@@ -120,6 +135,11 @@ app.post("/api/report/upload", upload.single("file"), async (req, res) => {
     console.error("❌ Upload error:", err);
     res.status(500).json({ success: false, message: "Upload failed", error: err.message });
   }
+});
+
+// ✅ Catch-All Route for Frontend (important for Netlify/Render)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ✅ Start the Server
